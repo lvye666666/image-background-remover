@@ -1,16 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Cloudflare Pages prefers Pages Router API routes
-  // Keep app dir but pages/api takes precedence for API routes
-  experimental: {
-    taint: false,
+  // Static export for Cloudflare Pages - no Node.js server needed
+  output: "export",
+  images: {
+    unoptimized: true,
+    loader: "imgix",
+    path: "",
   },
-  // Ensure proper routing on Cloudflare Pages
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: false,
   },
 };
 

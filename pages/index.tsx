@@ -6,6 +6,10 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 type ProcessingState = "idle" | "uploading" | "processing" | "done" | "error";
 
+// Direct call to Remove.bg from browser
+// Direct call to Remove.bg from browser
+const REMOVE_BG_API_KEY = process.env.NEXT_PUBLIC_REMOVE_BG_API_KEY || "";
+
 export default function Home() {
   const [state, setState] = useState<ProcessingState>("idle");
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -39,19 +43,37 @@ export default function Home() {
 
       setState("processing");
 
-      const res = await fetch("/api/remove-bg", {
+      // Call Remove.bg API directly from browser
+      const formData = new FormData();
+      const blob = new Blob([arrayBuffer], { type: file.type });
+      formData.append("image_file", blob, file.name);
+      formData.append("size", "auto");
+      formData.append("format", "png");
+
+      const res = await fetch("https://api.remove.bg/v1.0/removebg", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
+        headers: {
+          "X-Api-Key": REMOVE_BG_API_KEY,
+        },
+        body: formData,
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `处理失败 (${res.status})`);
+        let errorMessage = "处理失败";
+        try {
+          const errBody = await res.json();
+          errorMessage = errBody.errors?.[0]?.title || `处理失败 (${res.status})`;
+        } catch {
+          errorMessage = `处理失败 (${res.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await res.json();
-      setResultImage(data.result);
+      const resultBuffer = await res.arrayBuffer();
+      const resultBase64 = Buffer.from(resultBuffer).toString("base64");
+      const resultDataUrl = `data:image/png;base64,${resultBase64}`;
+
+      setResultImage(resultDataUrl);
       setState("done");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "未知错误，请重试。";
